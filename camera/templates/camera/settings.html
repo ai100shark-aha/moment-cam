@@ -1,0 +1,105 @@
+{% extends "camera/base.html" %}
+{% block title %}게시 설정 · {{ APP_NAME }}{% endblock %}
+{% block body %}
+<main class="page">
+  <header class="page-head">
+    <a class="icon-btn" href="{% url 'camera' %}" aria-label="촬영 화면으로 돌아가기">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </a>
+    <h1>게시 설정</h1>
+  </header>
+
+  {% for message in messages %}<p class="notice" role="status"><strong>{{ message }}</strong></p>{% endfor %}
+
+  {% if not ig_ready %}
+  <p class="notice warn"><strong>연습 모드</strong> · 인스타그램 계정이 아직 연결되지 않았어요. 사진을 찍으면 실제로는 올리지 않고, 올린 것처럼 기록만 남겨요.</p>
+  {% endif %}
+
+  <form method="post" id="settingsForm" style="display:flex;flex-direction:column;gap:24px">
+    {% csrf_token %}
+
+    <section class="group">
+      <h2>게시할 곳</h2>
+      <div class="rows">
+        <div class="row">
+          <div class="txt"><b>인스타그램</b><span>{% if ig_ready %}크리에이터 계정 연결됨{% else %}연결 전 (연습 모드){% endif %}</span></div>
+          <label class="switch"><input type="checkbox" name="post_instagram" aria-label="인스타그램 자동 게시" {% if s.post_instagram %}checked{% endif %}><i></i></label>
+        </div>
+        <div class="row">
+          <div class="txt"><b>페이스북 · 스레드</b><span>인스타그램 앱의 연동 설정을 따라가요</span></div>
+          <span class="state">인스타그램 연동</span>
+        </div>
+        <div class="row">
+          <div class="txt"><b>네이버 블로그</b><span>자동 게시 미지원 · 하루치 초안을 만들어요</span></div>
+          <label class="switch"><input type="checkbox" name="make_blog_draft" aria-label="블로그 초안 만들기" {% if s.make_blog_draft %}checked{% endif %}><i></i></label>
+        </div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>게시 방식</h2>
+      <div class="rows">
+        <div class="row col">
+          <b>일상 모드 · 올리는 곳</b>
+          <div class="seg" role="radiogroup" aria-label="일상 모드 올리는 곳">
+            <label><input type="radio" name="daily_target" value="feed" {% if s.daily_target == 'feed' %}checked{% endif %}><span>피드</span></label>
+            <label><input type="radio" name="daily_target" value="story" {% if s.daily_target == 'story' %}checked{% endif %}><span>스토리</span></label>
+          </div>
+        </div>
+        <div class="row col">
+          <b>일상 모드 · 올리는 때</b>
+          <div class="seg" role="radiogroup" aria-label="일상 모드 올리는 때">
+            <label><input type="radio" name="daily_batch" value="" {% if not s.daily_batch %}checked{% endif %}><span>하나씩 바로</span></label>
+            <label><input type="radio" name="daily_batch" value="on" {% if s.daily_batch %}checked{% endif %}><span>모아서 한 번에</span></label>
+          </div>
+        </div>
+        <div class="row col">
+          <b>레이스 모드</b>
+          <div class="kv"><span>달리는 중</span><b>스토리로 하나씩</b></div>
+          <div class="kv"><span>완주 후</span><b>베스트 사진 피드에 묶기</b></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>안전장치</h2>
+      <div class="rows">
+        <div class="row col">
+          <b>게시 전 취소할 수 있는 시간</b>
+          <div class="seg" role="radiogroup" aria-label="취소 가능 시간">
+            <label><input type="radio" name="cancel_seconds" value="3" {% if s.cancel_seconds == 3 %}checked{% endif %}><span>3초</span></label>
+            <label><input type="radio" name="cancel_seconds" value="5" {% if s.cancel_seconds == 5 %}checked{% endif %}><span>5초</span></label>
+            <label><input type="radio" name="cancel_seconds" value="0" {% if s.cancel_seconds == 0 %}checked{% endif %}><span>매번 확인</span></label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="txt"><b>단체 사진은 물어보기</b><span>얼굴이 2명 이상이면 게시를 멈춰요</span></div>
+          <label class="switch"><input type="checkbox" name="group_check" aria-label="단체 사진 확인" {% if s.group_check %}checked{% endif %}><i></i></label>
+        </div>
+        <div class="row">
+          <div class="txt"><b>신호 없으면 대기 후 올리기</b><span>산악 구간에서도 사진을 놓치지 않아요</span></div>
+          <label class="switch"><input type="checkbox" name="offline_queue" aria-label="오프라인 대기 업로드" {% if s.offline_queue %}checked{% endif %}><i></i></label>
+        </div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>AI 캡션</h2>
+      <div class="rows">
+        <div class="row">
+          <div class="txt"><b>캡션·해시태그 자동 작성</b><span>{% if ai_ready %}Claude가 사진을 보고 짧게 써 줘요{% else %}Claude API 키를 넣으면 켜져요{% endif %}</span></div>
+          <label class="switch"><input type="checkbox" name="ai_caption" aria-label="AI 캡션 자동 작성" {% if s.ai_caption %}checked{% endif %}><i></i></label>
+        </div>
+      </div>
+      {% if not ai_ready %}<p class="notice">Claude API 키가 없어 캡션과 단체 사진 확인(인원수 세기)이 쉬고 있어요.</p>{% endif %}
+    </section>
+
+    <button class="btn primary" type="submit">저장</button>
+  </form>
+
+  <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button class="btn ghost" type="submit" style="width:100%">로그아웃</button>
+  </form>
+</main>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "camera/base.html" %}
+{% load static %}
+{% block title %}{{ day|date:"n월 j일" }} · {{ APP_NAME }}{% endblock %}
+{% block body %}
+<main class="page">
+  <header class="page-head">
+    <a class="icon-btn" href="{% url 'camera' %}" aria-label="촬영 화면으로 돌아가기">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </a>
+    <h1>{% if is_today %}오늘{% else %}{{ day|date:"n월 j일" }}{% endif %}의 사진</h1>
+  </header>
+
+  <nav class="day-nav" aria-label="날짜 이동">
+    <a class="btn small ghost" href="?date={{ prev_day|date:'Y-m-d' }}">← 전날</a>
+    <b>{{ day|date:"Y년 n월 j일 (D)" }}</b>
+    {% if is_today %}<span style="width:76px"></span>{% else %}<a class="btn small ghost" href="?date={{ next_day|date:'Y-m-d' }}">다음 날 →</a>{% endif %}
+  </nav>
+
+  {% if request.GET.finish %}
+  <p class="notice warn"><strong>완주 축하드려요!</strong> 베스트 사진을 골라 아래 '피드에 묶어 올리기'를 눌러 주세요. (최대 10장)</p>
+  {% endif %}
+
+  {% if photos %}
+  <ul class="photos">
+    {% for p in photos %}
+    <li class="photo" data-id="{{ p.pk }}">
+      <a href="{{ p.image.url }}" download="{{ day|date:'Ymd' }}-{{ forloop.counter }}.jpg" aria-label="{{ forloop.counter }}번 사진 저장">
+        <img src="{{ p.image.url }}" alt="{{ p.caption|default:'찍은 사진' }}" loading="lazy">
+      </a>
+      <div class="meta">
+        <div class="top">
+          <span class="num">{{ p.taken_at|date:"H:i" }}</span>
+          <span class="tag {{ p.status }}">{{ p.get_status_display }}{% if p.status == 'posted' %} · {% if p.target == 'story' %}스토리{% else %}피드{% endif %}{% endif %}</span>
+        </div>
+        <p class="cap">{{ p.caption|default:"(캡션 없음)" }}{% if p.race_line %} <span class="muted">· {{ p.race_line }}</span>{% endif %}</p>
+        {% if p.status == 'failed' and p.error %}<p class="err">{{ p.error }}</p>{% endif %}
+        <div class="acts">
+          <label class="pick"><input type="checkbox" class="pick-box" value="{{ p.pk }}"> 묶음에 넣기</label>
+          {% if p.status != 'posted' %}
+          <button type="button" class="btn small primary act-publish">{% if p.status == 'failed' %}다시 올리기{% else %}올리기{% endif %}</button>
+          <button type="button" class="btn small ghost act-cancel">지우기</button>
+          {% endif %}
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <section class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div class="field">
+      <label for="bundleCaption">묶음 게시물 캡션</label>
+      <textarea class="input" id="bundleCaption" rows="3">{{ draft.title }}</textarea>
+    </div>
+    <button type="button" class="btn primary" id="bundleBtn" disabled>사진을 골라 주세요</button>
+  </section>
+
+  {% if s.make_blog_draft %}
+  <section class="group">
+    <h2>블로그 초안</h2>
+    <div class="field">
+      <label for="blogTitle">제목</label>
+      <input class="input" id="blogTitle" value="{{ draft.title }}" style="font-weight:600">
+    </div>
+    <div class="field">
+      <label for="blogBody">본문</label>
+      <textarea class="input" id="blogBody" rows="8">{{ draft.body }}</textarea>
+    </div>
+    <p class="notice">네이버 블로그는 자동 게시가 안 돼요. 본문을 복사하고, 위 사진을 눌러 저장한 뒤 블로그 앱에 붙여 넣어 주세요.</p>
+    <button type="button" class="btn primary" id="copyBtn">제목 + 본문 복사하기</button>
+  </section>
+  {% endif %}
+  {% else %}
+  <p class="empty">이날 찍은 사진이 없어요.</p>
+  {% endif %}
+</main>
+<form hidden>{% csrf_token %}</form>
+{% endblock %}
+{% block scripts %}<script src="{% static 'camera/today.js' %}"></script>{% endblock %}

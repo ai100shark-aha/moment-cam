@@ -1,0 +1,22 @@
+{% extends "camera/base.html" %}
+{% block title %}로그인 · {{ APP_NAME }}{% endblock %}
+{% block body %}
+<main class="page login">
+  <h1>{{ APP_NAME }}</h1>
+  <p class="muted" style="margin:0">찍는 순간, 바로 공유돼요.</p>
+  <form method="post">
+    {% csrf_token %}
+    {% if form.errors %}<ul class="errorlist"><li>아이디 또는 비밀번호가 맞지 않아요.</li></ul>{% endif %}
+    <div class="field">
+      <label for="id_username">아이디</label>
+      <input class="input" id="id_username" name="username" autocomplete="username" autocapitalize="none" required>
+    </div>
+    <div class="field">
+      <label for="id_password">비밀번호</label>
+      <input class="input" id="id_password" name="password" type="password" autocomplete="current-password" required>
+    </div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="btn primary" type="submit">로그인</button>
+  </form>
+</main>
+{% endblock %}

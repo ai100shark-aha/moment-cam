@@ -1,0 +1,25 @@
+{% load static %}<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E0F11">
+<title>{% block title %}{{ APP_NAME }}{% endblock %}</title>
+<link rel="manifest" href="{% url 'manifest' %}">
+<link rel="apple-touch-icon" href="{% static 'camera/icon-192.png' %}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'camera/app.css' %}">
+</head>
+<body>
+{% block body %}{% endblock %}
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('{% url "sw" %}').catch(() => {});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

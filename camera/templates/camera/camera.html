@@ -1,0 +1,164 @@
+{% extends "camera/base.html" %}
+{% load static %}
+{% block body %}
+<main class="cam">
+  <header class="cam-top">
+    <div class="pill" id="statusPill">
+      <span class="dot"></span>
+      <span id="statusText">자동 게시 켜짐</span>
+      <span class="muted" id="statusSub">· 인스타그램</span>
+    </div>
+    <a class="icon-btn" href="{% url 'settings' %}" aria-label="게시 설정 열기">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.5" fill="#1A1C20"/><circle cx="15" cy="17" r="2.5" fill="#1A1C20"/></svg>
+    </a>
+  </header>
+
+  <div class="banner" id="banner" role="status" hidden>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+    <div><b id="bannerTitle"></b><span id="bannerSub"></span></div>
+  </div>
+
+  <div class="viewfinder">
+    <video id="video" playsinline autoplay muted></video>
+    <div class="flash" id="flash"></div>
+    <div class="vf-empty" id="noCamera" hidden>
+      <p style="margin:0">카메라를 열 수 없어요.<br>권한을 허용하거나, 사진을 직접 골라 주세요.</p>
+      <label class="btn primary" for="filePick">사진 찍기 / 고르기</label>
+      <input id="filePick" type="file" accept="image/*" capture="environment" hidden>
+    </div>
+    <div class="chips" id="chips">
+      <span class="chip" id="chipAi" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+        AI 캡션 켜짐
+      </span>
+      <span class="chip" id="chipTarget"></span>
+    </div>
+    <button type="button" class="race-panel" id="racePanel" aria-label="구간과 거리 고치기" hidden>
+      <span><span class="k">거리</span><span class="v"><span id="rDist">0.0</span><small> km</small></span></span>
+      <span><span class="k">경과 시간</span><span class="v" id="rTime">0:00</span></span>
+      <span><span class="k">페이스</span><span class="v" id="rPace">-</span></span>
+      <span class="sec">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11.5a7 7 0 0 1 14 0C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+        <span id="rSection">구간을 적어 보세요</span>
+        <span class="muted">눌러서 고치기</span>
+      </span>
+    </button>
+  </div>
+
+  <nav class="modes" aria-label="촬영 모드">
+    <button type="button" data-mode="daily" aria-pressed="true">일상</button>
+    <button type="button" data-mode="race" aria-pressed="false">레이스</button>
+  </nav>
+
+  <div class="controls">
+    <a class="thumb" id="thumb" href="{% url 'today' %}" aria-label="오늘 찍은 사진 보기">
+      <span class="badge" id="queueBadge" hidden></span>
+    </a>
+    <button type="button" class="shutter" id="shutter" aria-label="사진 찍기"><span></span></button>
+    <button type="button" class="side-btn" id="flipBtn" aria-label="카메라 전환">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+    </button>
+    <button type="button" class="side-btn" id="finishBtn" hidden>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>
+      완주
+    </button>
+  </div>
+
+  <p class="hint" id="hint"></p>
+</main>
+
+<!-- 게시 직전: 취소할 수 있는 시간 -->
+<div class="sheet-wrap" id="postSheet" hidden>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="postTitle">
+    <img class="preview" id="postImg" alt="방금 찍은 사진">
+    <div class="countdown" role="timer">
+      <div class="ring">
+        <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+          <circle class="track" cx="28" cy="28" r="24" fill="none" stroke-width="5"/>
+          <circle class="bar" id="ringBar" cx="28" cy="28" r="24" fill="none" stroke-width="5" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="0"/>
+        </svg>
+        <b id="ringNum">3</b>
+      </div>
+      <div><strong id="postTitle">3초 뒤 자동으로 올라가요</strong><span id="postSub"></span></div>
+    </div>
+    <div class="card" id="captionCard" style="display:flex;flex-direction:column;gap:10px">
+      <div class="ai-label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>
+        <label for="postCaption" id="captionLabel">캡션</label>
+      </div>
+      <textarea class="input" id="postCaption" rows="2" placeholder="캡션을 적어 보세요 (비워도 돼요)"></textarea>
+      <input class="input" id="postTags" aria-label="해시태그" placeholder="#해시태그">
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn" id="postCancel">취소</button>
+      <button type="button" class="btn primary" id="postNow">지금 올리기</button>
+    </div>
+  </section>
+</div>
+
+<!-- 단체 사진 확인 -->
+<div class="sheet-wrap" id="consentSheet" hidden>
+  <section class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="consentTitle" aria-describedby="consentDesc">
+    <img class="preview" id="consentImg" alt="방금 찍은 사진">
+    <div class="consent-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5a5 5 0 0 1 4.5 5"/></svg>
+    </div>
+    <h2 id="consentTitle">여러 사람이 함께 찍혔어요</h2>
+    <p id="consentDesc" style="color:var(--text-2);font-size:15px;line-height:1.6">자동 게시를 잠시 멈췄어요. 함께 찍은 분들께 올려도 되는지 물어보셨나요?</p>
+    <div class="btn-row">
+      <button type="button" class="btn" id="consentNo">올리지 않기</button>
+      <button type="button" class="btn primary" id="consentYes">동의받았어요, 올리기</button>
+    </div>
+    <p class="muted" style="font-size:13px;text-align:center">올리지 않아도 사진은 '오늘' 화면에 남아 있어요</p>
+  </section>
+</div>
+
+<dialog id="raceDialog" aria-labelledby="raceDialogTitle">
+  <form method="dialog" id="raceForm">
+    <h2 id="raceDialogTitle">레이스 시작</h2>
+    <div class="field">
+      <label for="raceNameInput">대회 이름</label>
+      <input class="input" id="raceNameInput" maxlength="100" placeholder="예: 제주 마라톤" required>
+    </div>
+    <p class="muted" style="margin:0;font-size:13px">지금부터 시간과 거리를 재고, 찍는 사진마다 표시해서 스토리로 올려요.</p>
+    <div class="btn-row">
+      <button type="button" class="btn" id="raceDialogCancel">취소</button>
+      <button type="submit" class="btn primary">시작</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="editDialog" aria-labelledby="editDialogTitle">
+  <form method="dialog" id="editForm">
+    <h2 id="editDialogTitle">구간 · 거리 고치기</h2>
+    <div class="field">
+      <label for="sectionInput">지금 구간</label>
+      <input class="input" id="sectionInput" maxlength="60" placeholder="예: CP3 → CP4">
+    </div>
+    <div class="field">
+      <label for="distInput">지금까지 달린 거리 (km)</label>
+      <input class="input" id="distInput" type="number" inputmode="decimal" min="0" step="0.1">
+    </div>
+    <p class="muted" style="margin:0;font-size:13px">화면이 꺼져 있는 동안은 거리를 정확히 재지 못해요. 시계에 찍힌 거리로 맞춰 주세요.</p>
+    <div class="btn-row">
+      <button type="button" class="btn" id="editDialogCancel">취소</button>
+      <button type="submit" class="btn primary">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="finishDialog" aria-labelledby="finishDialogTitle">
+  <form method="dialog" id="finishForm">
+    <h2 id="finishDialogTitle">완주하셨나요?</h2>
+    <p style="margin:0;color:var(--text-2)">레이스를 마치고, 베스트 사진을 골라 피드에 묶어 올리는 화면으로 가요.</p>
+    <div class="btn-row">
+      <button type="button" class="btn" id="finishDialogCancel">아직이에요</button>
+      <button type="submit" class="btn primary">완주했어요</button>
+    </div>
+  </form>
+</dialog>
+
+<form hidden>{% csrf_token %}</form>
+{{ state|json_script:"state" }}
+{% endblock %}
+{% block scripts %}<script src="{% static 'camera/camera.js' %}"></script>{% endblock %}
