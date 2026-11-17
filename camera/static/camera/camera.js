@@ -367,10 +367,15 @@
     const file = e.target.files[0];
     e.target.value = '';
     if (!file) return;
+    // <img>로 읽어야 아이폰에서 사진 방향(EXIF)이 바르게 적용됩니다.
+    // (createImageBitmap은 사파리 계열에서 방향 정보를 무시해 사진이 옆으로 누워요.)
+    const url = URL.createObjectURL(file);
     try {
-      const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
-      await shoot(bmp, bmp.width, bmp.height, false);
-    } catch { toast('사진을 읽지 못했어요'); }
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      await shoot(img, img.naturalWidth, img.naturalHeight, false);
+    } catch { toast('사진을 읽지 못했어요'); } finally { URL.revokeObjectURL(url); }
   });
 
   // ---- 서버로 올리기 -----------------------------------------------------

@@ -161,6 +161,20 @@ class FlowTests(TestCase):
         self.assertIn("제주 바다 위로 지는 노을", html)
         self.assertIn("블로그 초안", html)
 
+    def test_diagnose_reports_missing_keys(self):
+        checks = self.client.post(reverse("api_diagnose")).json()["checks"]
+        self.assertEqual([c["ok"] for c in checks], [False, False, True])
+        self.assertIn("ANTHROPIC_API_KEY", checks[0]["detail"])
+
+    @override_settings(IG_USER_ID="111", IG_ACCESS_TOKEN="t")
+    def test_diagnose_spots_wrong_instagram_user_id(self):
+        with mock.patch.object(
+            instagram, "_call", return_value={"user_id": "222", "username": "runner"}
+        ):
+            ok, text = instagram.check()
+        self.assertFalse(ok)
+        self.assertIn("222", text)
+
     def test_settings_save(self):
         self.client.post(
             reverse("settings"),

@@ -55,7 +55,7 @@ def analyze(image_bytes, mode="daily", race_name=""):
             context = f"달리기 대회({race_name or '레이스'}) 도중에 찍은 사진입니다."
         else:
             context = "일상에서 기억하고 싶은 순간을 찍은 사진입니다."
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20)
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY.strip(), timeout=20)
         message = client.messages.create(
             model=settings.CAPTION_MODEL,
             max_tokens=300,
@@ -81,5 +81,37 @@ def analyze(image_bytes, mode="daily", race_name=""):
         text = "".join(b.text for b in message.content if getattr(b, "type", "") == "text")
         return _parse(text)
     except Exception as exc:  # 캡션이 없어도 게시는 계속되어야 합니다.
-        log.warning("AI 캡션 실패: %s", exc)
+        log.warning("AI 캡션 실패: %s", _explain(exc))
         return dict(EMPTY)
+
+
+def check():
+    """Claude API 연결을 아주 짧게 시험합니다. (ok, 설명)을 돌려줍니다."""
+    if not is_configured():
+        return False, "ANTHROPIC_API_KEY 값이 비어 있어요."
+    try:
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY.strip(), timeout=20)
+        client.messages.create(
+            model=settings.CAPTION_MODEL,
+            max_tokens=5,
+            messages=[{"role": "user", "content": "안녕"}],
+        )
+        return True, f"정상 ({settings.CAPTION_MODEL})"
+    except Exception as exc:
+        return False, _explain(exc)
+
+
+def _explain(exc):
+    text = str(exc)
+    status = getattr(exc, "status_code", None)
+    if status == 401:
+        return "키가 올바르지 않아요. 키를 다시 복사해 넣어 주세요. (401)"
+    if status == 404:
+        return f"모델 이름을 찾지 못했어요: {settings.CAPTION_MODEL} (404)"
+    if status in (400, 402, 403) and "credit" in text.lower():
+        return "API 크레딧(잔액)이 없어요. Console의 Billing에서 충전이 필요해요."
+    if status == 429:
+        return "요청 한도를 넘었어요. 잠시 뒤 다시 시도해 주세요. (429)"
+    return f"{type(exc).__name__}: {text[:300]}"

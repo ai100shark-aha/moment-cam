@@ -10,6 +10,7 @@ urlpatterns = [
     path("sw.js", views.service_worker, name="sw"),
     path("offline/", views.offline, name="offline"),
     path("api/state/", views.api_state, name="api_state"),
+    path("api/diagnose/", views.api_diagnose, name="api_diagnose"),
     path("api/photos/", views.api_upload, name="api_upload"),
     path("api/photos/<int:pk>/publish/", views.api_publish, name="api_publish"),
     path("api/photos/<int:pk>/cancel/", views.api_cancel, name="api_cancel"),

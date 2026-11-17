@@ -97,9 +97,57 @@
     <button class="btn primary" type="submit">저장</button>
   </form>
 
+  <section class="group">
+    <h2>연결 점검</h2>
+    <div class="rows" id="checkRows" hidden></div>
+    <button class="btn" type="button" id="checkBtn">Claude · 인스타그램 연결 확인하기</button>
+  </section>
+
   <form method="post" action="{% url 'logout' %}">
     {% csrf_token %}
     <button class="btn ghost" type="submit" style="width:100%">로그아웃</button>
   </form>
 </main>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const btn = document.getElementById('checkBtn');
+  const rows = document.getElementById('checkRows');
+  const csrf = () => (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = '확인하는 중…';
+    rows.hidden = false;
+    rows.textContent = '';
+    let checks;
+    try {
+      const res = await fetch('{% url "api_diagnose" %}', { method: 'POST', headers: { 'X-CSRFToken': csrf() } });
+      checks = (await res.json()).checks;
+    } catch {
+      checks = [{ name: '서버', ok: false, detail: '서버에 연결하지 못했어요.' }];
+    }
+    for (const c of checks) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const txt = document.createElement('div');
+      txt.className = 'txt';
+      const b = document.createElement('b');
+      b.textContent = c.name;
+      const span = document.createElement('span');
+      span.textContent = c.detail;
+      span.style.overflowWrap = 'anywhere';
+      txt.append(b, span);
+      const state = document.createElement('span');
+      state.className = 'state';
+      state.textContent = c.ok ? '정상' : '문제 있음';
+      state.style.color = c.ok ? 'var(--ok)' : 'var(--danger)';
+      row.append(txt, state);
+      rows.append(row);
+    }
+    btn.disabled = false;
+    btn.textContent = '다시 확인하기';
+  });
+})();
+</script>
 {% endblock %}

@@ -97,3 +97,19 @@ def publish_carousel(image_urls, caption=""):
         caption=caption,
     )["id"]
     return _publish(container)
+
+
+def check():
+    """인스타그램 토큰이 살아 있는지, 사용자 ID가 맞는지 확인합니다. (ok, 설명)을 돌려줍니다."""
+    if not is_configured():
+        missing = [k for k in ("IG_USER_ID", "IG_ACCESS_TOKEN") if not getattr(settings, k)]
+        return False, f"{', '.join(missing)} 값이 비어 있어요. (연습 모드)"
+    try:
+        me = _call("GET", "me", fields="user_id,username")
+    except InstagramError as exc:
+        return False, str(exc)[:300]
+    found = str(me.get("user_id") or me.get("id") or "")
+    name = me.get("username", "")
+    if found and found != str(settings.IG_USER_ID).strip():
+        return False, f"@{name} 계정에 연결됐지만 IG_USER_ID가 달라요. {found} 로 바꿔 주세요."
+    return True, f"정상 (@{name})"

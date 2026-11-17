@@ -15,7 +15,7 @@ from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import AppSettings, Photo, RaceSession
-from .services import blog, caption, images, publisher
+from .services import blog, caption, images, instagram, publisher
 
 
 # ---- 공통 ----------------------------------------------------------------
@@ -317,4 +317,26 @@ def offline(request):
         "<!doctype html><meta charset=utf-8><title>오프라인</title>"
         "<body style='background:#0E0F11;color:#F4F2EE;font-family:sans-serif;padding:32px'>"
         "<h1>신호가 없어요</h1><p>신호가 잡히면 다시 열어 주세요.</p>"
+    )
+
+
+@api_login_required
+@require_POST
+def api_diagnose(request):
+    """설정 화면의 '연결 점검': Claude 키와 인스타그램 토큰이 실제로 동작하는지 시험합니다."""
+    ai_ok, ai_text = caption.check()
+    ig_ok, ig_text = instagram.check()
+    base = settings.PUBLIC_BASE_URL
+    return JsonResponse(
+        {
+            "checks": [
+                {"name": "AI 캡션 (Claude)", "ok": ai_ok, "detail": ai_text},
+                {"name": "인스타그램", "ok": ig_ok, "detail": ig_text},
+                {
+                    "name": "앱 주소",
+                    "ok": base.startswith("https://"),
+                    "detail": base or "PUBLIC_BASE_URL 값이 비어 있어요.",
+                },
+            ]
+        }
     )
