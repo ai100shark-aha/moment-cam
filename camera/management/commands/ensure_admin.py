@@ -14,9 +14,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         username = os.environ.get("ADMIN_USERNAME", "").strip()
-        password = os.environ.get("ADMIN_PASSWORD", "")
+        # 붙여 넣을 때 딸려 온 앞뒤 공백·줄바꿈은 떼어 냅니다.
+        password = os.environ.get("ADMIN_PASSWORD", "").strip()
         if not username or not password:
-            self.stdout.write("ADMIN_USERNAME / ADMIN_PASSWORD 가 없어 계정을 만들지 않았습니다.")
+            missing = [k for k, v in (("ADMIN_USERNAME", username), ("ADMIN_PASSWORD", password)) if not v]
+            self.stdout.write(f"[계정] {', '.join(missing)} 값이 비어 있어 로그인 계정을 만들지 않았습니다.")
             return
         User = get_user_model()
         user, created = User.objects.get_or_create(
@@ -25,4 +27,6 @@ class Command(BaseCommand):
         user.is_staff = user.is_superuser = True
         user.set_password(password)
         user.save()
-        self.stdout.write(f"로그인 계정 '{username}' {'생성' if created else '갱신'} 완료")
+        self.stdout.write(
+            f"[계정] 로그인 계정 '{username}' {'생성' if created else '갱신'} 완료 (비밀번호 {len(password)}자)"
+        )

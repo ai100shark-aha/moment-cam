@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     buildCommand: ./build.sh
-    startCommand: gunicorn config.wsgi:application --timeout 90
+    startCommand: python manage.py migrate --noinput && python manage.py ensure_admin && gunicorn config.wsgi:application --timeout 90
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
