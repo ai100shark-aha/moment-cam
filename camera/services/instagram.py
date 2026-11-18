@@ -25,9 +25,26 @@ def is_configured():
     return bool(settings.IG_USER_ID and settings.IG_ACCESS_TOKEN)
 
 
+def _token():
+    return settings.IG_ACCESS_TOKEN.strip()
+
+
+def graph_url():
+    """토큰 종류에 맞는 주소를 고릅니다.
+
+    Instagram 로그인으로 받은 토큰(IGAA…)은 graph.instagram.com,
+    Facebook/비즈니스 로그인으로 받은 토큰(EAA…)은 graph.facebook.com 을 씁니다.
+    IG_GRAPH_URL 을 직접 넣었으면 그 값을 따릅니다.
+    """
+    if settings.IG_GRAPH_URL_SET:
+        return settings.IG_GRAPH_URL.rstrip("/")
+    host = "graph.instagram.com" if _token().startswith("IG") else "graph.facebook.com"
+    return f"https://{host}/v21.0"
+
+
 def _call(method, path, **params):
-    params["access_token"] = settings.IG_ACCESS_TOKEN
-    url = f"{settings.IG_GRAPH_URL}/{path}"
+    params["access_token"] = _token()
+    url = f"{graph_url()}/{path}"
     try:
         if method == "GET":
             resp = requests.get(url, params=params, timeout=TIMEOUT)
@@ -104,12 +121,9 @@ def check():
     if not is_configured():
         missing = [k for k in ("IG_USER_ID", "IG_ACCESS_TOKEN") if not getattr(settings, k)]
         return False, f"{', '.join(missing)} 값이 비어 있어요. (연습 모드)"
+    user_id = str(settings.IG_USER_ID).strip()
     try:
-        me = _call("GET", "me", fields="user_id,username")
+        info = _call("GET", user_id, fields="username")
     except InstagramError as exc:
-        return False, str(exc)[:300]
-    found = str(me.get("user_id") or me.get("id") or "")
-    name = me.get("username", "")
-    if found and found != str(settings.IG_USER_ID).strip():
-        return False, f"@{name} 계정에 연결됐지만 IG_USER_ID가 달라요. {found} 로 바꿔 주세요."
-    return True, f"정상 (@{name})"
+        return False, f"{str(exc)[:300]} (주소: {graph_url()})"
+    return True, f"정상 (@{info.get('username', '?')})"

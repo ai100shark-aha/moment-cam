@@ -130,7 +130,9 @@ CAPTION_MODEL = os.environ.get("CAPTION_MODEL", "claude-haiku-5-5")
 # Instagram Graph API (크리에이터/비즈니스 계정)
 IG_USER_ID = os.environ.get("IG_USER_ID", "")
 IG_ACCESS_TOKEN = os.environ.get("IG_ACCESS_TOKEN", "")
-IG_GRAPH_URL = os.environ.get("IG_GRAPH_URL", "https://graph.facebook.com/v21.0")
+IG_GRAPH_URL = os.environ.get("IG_GRAPH_URL", "").strip()
+# 비워 두면 토큰 종류를 보고 주소를 자동으로 고릅니다.
+IG_GRAPH_URL_SET = bool(IG_GRAPH_URL)
 
 LOGGING = {
     "version": 1,

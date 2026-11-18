@@ -166,14 +166,18 @@ class FlowTests(TestCase):
         self.assertEqual([c["ok"] for c in checks], [False, False, True])
         self.assertIn("ANTHROPIC_API_KEY", checks[0]["detail"])
 
-    @override_settings(IG_USER_ID="111", IG_ACCESS_TOKEN="t")
-    def test_diagnose_spots_wrong_instagram_user_id(self):
-        with mock.patch.object(
-            instagram, "_call", return_value={"user_id": "222", "username": "runner"}
-        ):
+    @override_settings(IG_USER_ID="111", IG_ACCESS_TOKEN="t", IG_GRAPH_URL_SET=False)
+    def test_diagnose_instagram_ok(self):
+        with mock.patch.object(instagram, "_call", return_value={"username": "runner"}):
             ok, text = instagram.check()
-        self.assertFalse(ok)
-        self.assertIn("222", text)
+        self.assertTrue(ok)
+        self.assertIn("@runner", text)
+
+    @override_settings(IG_GRAPH_URL_SET=False, IG_ACCESS_TOKEN=" IGAAabc ")
+    def test_graph_url_follows_token_type(self):
+        self.assertIn("graph.instagram.com", instagram.graph_url())
+        with self.settings(IG_ACCESS_TOKEN="EAAabc"):
+            self.assertIn("graph.facebook.com", instagram.graph_url())
 
     def test_settings_save(self):
         self.client.post(
