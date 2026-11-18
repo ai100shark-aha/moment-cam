@@ -203,6 +203,13 @@ class ServiceTests(TestCase):
         )
         self.assertEqual(got, {"caption": "노을", "hashtags": "#제주 #노을맛집", "people_count": 2})
 
+    def test_korean_time_says_morning(self):
+        import datetime
+        from zoneinfo import ZoneInfo
+
+        dt = datetime.datetime(2026, 11, 18, 10, 58, tzinfo=ZoneInfo("Asia/Seoul"))
+        self.assertEqual(caption._korean_time(dt), "11월 18일 수요일 오전 10시 58분")
+
     @override_settings(ANTHROPIC_API_KEY="")
     def test_no_api_key_gives_empty_caption(self):
         self.assertEqual(caption.analyze(jpeg())["caption"], "")

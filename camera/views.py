@@ -215,7 +215,9 @@ def api_upload(request):
     people = None
     if s.ai_caption or s.group_check:
         with photo.image.open("rb") as fh:
-            result = caption.analyze(fh.read(), mode, race.name if race else "")
+            result = caption.analyze(
+                fh.read(), mode, race.name if race else "", taken_at=photo.taken_at
+            )
         if s.ai_caption:
             photo.caption = result["caption"]
             photo.hashtags = result["hashtags"]

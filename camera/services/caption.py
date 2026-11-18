@@ -18,9 +18,23 @@ PROMPT = """이 사진을 SNS에 올리려고 합니다. 아래 JSON 형식으�
 
 {{"caption": "한국어 캡션 한 문장(25자 안팎, 담백하게, 이모지 없이)", "hashtags": ["해시태그", "3~5개", "# 없이"], "people_count": 사진에 얼굴이 뚜렷이 보이는 사람 수(정수)}}
 
-참고: {context}"""
+참고: {context}
+찍은 시각: {when}. 시간대(아침·낮·오후·저녁·밤)를 말할 때는 이 시각을 따르고, 사진만 보고 짐작하지 마세요."""
 
 EMPTY = {"caption": "", "hashtags": "", "people_count": None}
+
+
+WEEKDAYS = "월화수목금토일"
+
+
+def _korean_time(dt=None):
+    """예: 11월 18일 수요일 오전 10시 58분"""
+    from django.utils import timezone
+
+    dt = timezone.localtime(dt or timezone.now())
+    ampm = "오전" if dt.hour < 12 else "오후"
+    hour = dt.hour % 12 or 12
+    return f"{dt.month}월 {dt.day}일 {WEEKDAYS[dt.weekday()]}요일 {ampm} {hour}시 {dt.minute}분"
 
 
 def is_configured():
@@ -44,7 +58,7 @@ def _parse(text):
     }
 
 
-def analyze(image_bytes, mode="daily", race_name=""):
+def analyze(image_bytes, mode="daily", race_name="", taken_at=None):
     """{'caption', 'hashtags', 'people_count'}를 돌려줍니다. 실패해도 예외를 내지 않습니다."""
     if not is_configured():
         return dict(EMPTY)
@@ -55,6 +69,7 @@ def analyze(image_bytes, mode="daily", race_name=""):
             context = f"달리기 대회({race_name or '레이스'}) 도중에 찍은 사진입니다."
         else:
             context = "일상에서 기억하고 싶은 순간을 찍은 사진입니다."
+        when = _korean_time(taken_at)
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY.strip(), timeout=20)
         message = client.messages.create(
             model=settings.CAPTION_MODEL,
@@ -73,7 +88,7 @@ def analyze(image_bytes, mode="daily", race_name=""):
                                 ).decode(),
                             },
                         },
-                        {"type": "text", "text": PROMPT.format(context=context)},
+                        {"type": "text", "text": PROMPT.format(context=context, when=when)},
                     ],
                 }
             ],
