@@ -213,3 +213,37 @@ class ServiceTests(TestCase):
     @override_settings(ANTHROPIC_API_KEY="")
     def test_no_api_key_gives_empty_caption(self):
         self.assertEqual(caption.analyze(jpeg())["caption"], "")
+
+
+class RememberMeTests(TestCase):
+    """서버가 재시작해 로그인 기록(세션)이 지워져도 다시 로그인하지 않아도 되는지."""
+
+    def test_login_survives_lost_session(self):
+        from django.contrib.sessions.models import Session
+
+        User.objects.create_user("runner", password="pw")
+        self.client.post(reverse("login"), {"username": "runner", "password": "pw"})
+        self.assertIn("mc_remember", self.client.cookies)
+
+        Session.objects.all().delete()  # 서버 재시작으로 DB가 지워진 상황
+        res = self.client.get(reverse("api_state"))
+        self.assertEqual(res.status_code, 200)
+
+    def test_user_recreated_after_restart_still_logged_in(self):
+        User.objects.create_user("runner", password="pw")
+        self.client.post(reverse("login"), {"username": "runner", "password": "pw"})
+        User.objects.all().delete()
+        User.objects.create_user("runner", password="pw")  # ensure_admin 이 다시 만든 계정
+        self.assertEqual(self.client.get(reverse("api_state")).status_code, 200)
+
+    def test_forged_cookie_is_ignored(self):
+        User.objects.create_user("runner", password="pw")
+        self.client.cookies["mc_remember"] = "runner:forged"
+        self.assertEqual(self.client.get(reverse("api_state")).status_code, 401)
+
+    def test_logout_forgets(self):
+        User.objects.create_user("runner", password="pw")
+        self.client.post(reverse("login"), {"username": "runner", "password": "pw"})
+        self.client.post(reverse("logout"))
+        self.assertEqual(self.client.cookies["mc_remember"].value, "")
+        self.assertEqual(self.client.get(reverse("api_state")).status_code, 401)

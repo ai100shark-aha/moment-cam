@@ -383,17 +383,23 @@
 
   // ---- 서버로 올리기 -----------------------------------------------------
   let flushing = false;
+  let waking = false; // 서버가 잠에서 깨어나는 중인지 (무료 서버는 최대 1분쯤 걸려요)
 
   async function updateBanner() {
     const items = await queue.all().catch(() => []);
     const n = items.length;
     $('queueBadge').hidden = n === 0;
     $('queueBadge').textContent = n;
-    $('banner').hidden = n === 0 || (navigator.onLine && n === 1 && flushing);
     if (!navigator.onLine) {
+      $('banner').hidden = n === 0;
       $('bannerTitle').textContent = `신호 없음 · 사진 ${n}장 대기 중`;
       $('bannerSub').textContent = '신호가 잡히면 자동으로 올려요';
+    } else if (waking) {
+      $('banner').hidden = false;
+      $('bannerTitle').textContent = n ? `서버 깨우는 중 · 사진 ${n}장 대기 중` : '서버 깨우는 중';
+      $('bannerSub').textContent = '그냥 찍으셔도 돼요. 깨어나면 자동으로 올라가요';
     } else {
+      $('banner').hidden = n === 0 || (n === 1 && flushing);
       $('bannerTitle').textContent = `사진 ${n}장 올리는 중`;
       $('bannerSub').textContent = '잠시만 기다려 주세요';
     }
@@ -427,7 +433,12 @@
           }
           break;
         }
-        if (res.status === 401 || res.status === 403) { toast('로그인이 풀렸어요. 다시 로그인해 주세요'); break; }
+        if (res.status === 401 || res.status === 403) {
+          // 사진은 휴대폰 대기열에 그대로 남아 있다가, 로그인하고 돌아오면 자동으로 올라갑니다.
+          toast('다시 로그인해 주세요. 찍은 사진은 그대로 남아 있어요');
+          setTimeout(() => { location.href = '/accounts/login/?next=/'; }, 1800);
+          break;
+        }
         if (res.status >= 500) break; // 서버 문제: 나중에 다시
         await queue.remove(item.client_id);
         if (res.ok) await afterUpload(item, res.data); else toast(res.data.error || '사진을 올리지 못했어요');
@@ -439,7 +450,7 @@
   }
   window.addEventListener('online', flush);
   window.addEventListener('offline', updateBanner);
-  setInterval(() => { if (navigator.onLine) flush(); }, 30000);
+  setInterval(() => { if (navigator.onLine) flush(); }, 10000);
 
   async function afterUpload(item, photo) {
     const isLive = item.client_id === liveId && Date.now() - new Date(item.taken_at) < 90000 && !sheetOpen();
@@ -561,15 +572,24 @@
   });
 
   // ---- 시작 --------------------------------------------------------------
+  // 앱을 열면 곧바로 서버를 깨웁니다. 2초 안에 답이 없으면 '깨우는 중'을 보여 줍니다.
   async function refreshState() {
+    const slow = setTimeout(() => { waking = true; updateBanner(); }, 2000);
     try {
-      const res = await fetch('/api/state/');
+      const res = await fetch('/api/state/', { cache: 'no-store' });
+      if (res.status === 401 || res.status === 403) {
+        location.href = '/accounts/login/?next=/';
+        return;
+      }
       if (!res.ok) return;
       const data = await res.json();
       settings = data.settings;
       race = data.race;
       if (mode === 'race' && !race) setMode('daily'); else render();
-    } catch { /* 신호 없음: 가지고 있던 설정으로 계속 */ }
+    } catch { /* 신호 없음: 가지고 있던 설정으로 계속 */ } finally {
+      clearTimeout(slow);
+      if (waking) { waking = false; updateBanner(); flush(); }
+    }
   }
 
   // 가로로 들었을 때 버튼을 카메라 렌즈 반대편에 둡니다.
@@ -590,6 +610,7 @@
   render();
   if (mode === 'race') startTracking();
   startCamera();
+  refreshState(); // 서버 깨우기 (보관된 화면으로 열렸어도 설정을 최신으로)
   updateBanner();
   flush();
 })();
