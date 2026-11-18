@@ -572,6 +572,21 @@
     } catch { /* 신호 없음: 가지고 있던 설정으로 계속 */ }
   }
 
+  // 가로로 들었을 때 버튼을 카메라 렌즈 반대편에 둡니다.
+  // 화면 각도 90 = 휴대폰 윗부분(렌즈)이 왼쪽, 270(-90) = 렌즈가 오른쪽.
+  function placeControls() {
+    const so = window.screen && window.screen.orientation;
+    let angle = so && typeof so.angle === 'number' ? so.angle : Number(window.orientation || 0);
+    angle = ((angle % 360) + 360) % 360;
+    document.body.classList.toggle('cam-right', angle === 270);
+  }
+  placeControls();
+  window.addEventListener('orientationchange', () => setTimeout(placeControls, 150));
+  window.addEventListener('resize', placeControls);
+  if (window.screen && window.screen.orientation && window.screen.orientation.addEventListener) {
+    window.screen.orientation.addEventListener('change', placeControls);
+  }
+
   render();
   if (mode === 'race') startTracking();
   startCamera();

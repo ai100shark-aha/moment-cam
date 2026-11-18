@@ -210,23 +210,48 @@ dialog .input { background: var(--bg); }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
-/* 가로 화면: 왼쪽에 큰 카메라 화면, 오른쪽에 버튼 */
+/* 가로 화면: 카메라 화면을 화면 전체에 깔고, 버튼은 그 위에 띄웁니다.
+   버튼 줄은 휴대폰 윗부분(카메라 렌즈가 있는 쪽)의 반대편에 둡니다.
+   - 기본(.side-right): 버튼이 오른쪽 → 렌즈가 왼쪽에 있을 때
+   - .cam-right 이면 버튼이 왼쪽 → 렌즈가 오른쪽에 있을 때 */
 @media (orientation: landscape) and (max-height: 600px) {
-  .cam { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) 132px;
-    grid-template-rows: auto auto minmax(0, 1fr) auto; column-gap: 16px; row-gap: 8px;
-    padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
-      max(10px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
-  .cam-top { grid-column: 1; grid-row: 1; }
-  .banner { grid-column: 1; grid-row: 2; padding: 8px 12px; }
-  .viewfinder { grid-column: 1; grid-row: 3; min-height: 0; border-radius: 20px; }
-  .hint { grid-column: 1; grid-row: 4; min-height: 0; font-size: 12px; }
-  .modes { grid-column: 2; grid-row: 1 / 3; align-self: start; flex-direction: column; border-radius: 22px; }
-  .modes button { min-width: 0; width: 120px; }
-  .controls { grid-column: 2; grid-row: 3 / 5; flex-direction: column; justify-content: space-evenly;
-    align-items: center; padding: 0; gap: 12px; }
-  .chips { left: 12px; right: 12px; bottom: 12px; }
-  .race-panel { left: 12px; right: auto; bottom: 12px; width: min(420px, calc(100% - 24px)); padding: 10px 14px; }
+  html, body { overflow: hidden; }
+  .cam { position: fixed; inset: 0; height: auto; max-width: none; margin: 0; padding: 0; display: block;
+    --side: 128px; --edge-l: max(12px, env(safe-area-inset-left)); --edge-r: max(12px, env(safe-area-inset-right)); }
+  .viewfinder { position: fixed; inset: 0; border-radius: 0; z-index: 0; }
+  .vf-empty { padding-right: calc(var(--side) + 24px); }
+
+  /* 버튼 줄 (기본: 오른쪽) */
+  .modes, .controls { position: fixed; z-index: 2; right: var(--edge-r); width: var(--side); }
+  .modes { top: max(10px, env(safe-area-inset-top)); flex-direction: column; border-radius: 22px;
+    background: rgba(14,15,17,.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .modes button { min-width: 0; width: 100%; }
+  .controls { top: 120px; bottom: max(10px, env(safe-area-inset-bottom)); flex-direction: column;
+    justify-content: space-evenly; align-items: center; padding: 8px 0; gap: 10px; border-radius: 28px;
+    background: rgba(14,15,17,.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .thumb { border-color: rgba(255,255,255,.4); }
+  .side-btn { background: rgba(14,15,17,.6); }
+
+  /* 위쪽 상태 표시와 아래쪽 안내 (버튼 줄 반대편) */
+  .cam-top { position: fixed; z-index: 2; top: max(10px, env(safe-area-inset-top));
+    left: var(--edge-l); right: calc(var(--edge-r) + var(--side) + 12px); }
+  .cam-top .pill, .cam-top .icon-btn { background: rgba(14,15,17,.6); backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); }
+  .banner { position: fixed; z-index: 2; top: 64px; left: var(--edge-l); max-width: 420px; padding: 8px 12px;
+    background: rgba(14,15,17,.75); }
+  .hint { display: none; }
+  .chips { left: var(--edge-l); right: auto; bottom: max(12px, env(safe-area-inset-bottom)); }
+  .race-panel { left: var(--edge-l); right: auto; bottom: max(12px, env(safe-area-inset-bottom));
+    width: min(420px, calc(100% - var(--side) - 48px)); padding: 10px 14px; }
   .race-panel .v { font-size: 22px; }
+
+  /* 렌즈가 오른쪽에 있을 때: 버튼 줄을 왼쪽으로 */
+  body.cam-right .modes, body.cam-right .controls { right: auto; left: var(--edge-l); }
+  body.cam-right .cam-top { left: calc(var(--edge-l) + var(--side) + 12px); right: var(--edge-r); }
+  body.cam-right .banner, body.cam-right .chips, body.cam-right .race-panel {
+    left: auto; right: var(--edge-r); }
+  body.cam-right .vf-empty { padding-right: 24px; padding-left: calc(var(--side) + 24px); }
+
   .sheet { max-width: 720px; display: grid; grid-template-columns: 240px minmax(0, 1fr); column-gap: 16px;
     align-content: start; }
   .sheet .preview { grid-row: 1 / 6; max-height: 80dvh; height: 100%; }
