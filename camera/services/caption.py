@@ -58,7 +58,7 @@ def analyze(image_bytes, mode="daily", race_name=""):
         client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY.strip(), timeout=20)
         message = client.messages.create(
             model=settings.CAPTION_MODEL,
-            max_tokens=300,
+            max_tokens=1024,
             messages=[
                 {
                     "role": "user",
@@ -79,6 +79,9 @@ def analyze(image_bytes, mode="daily", race_name=""):
             ],
         )
         text = "".join(b.text for b in message.content if getattr(b, "type", "") == "text")
+        if not text.strip():
+            kinds = [getattr(b, "type", "?") for b in message.content]
+            raise ValueError(f"빈 답변 (stop_reason={message.stop_reason}, blocks={kinds})")
         return _parse(text)
     except Exception as exc:  # 캡션이 없어도 게시는 계속되어야 합니다.
         log.warning("AI 캡션 실패: %s", _explain(exc))

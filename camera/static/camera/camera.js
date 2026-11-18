@@ -273,8 +273,11 @@
 
   // 사진을 게시 비율에 맞춰 잘라 캔버스에 그립니다 (피드 4:5, 스토리 9:16).
   function drawCover(source, sw, sh, mirror) {
-    const ratio = target() === 'story' ? 9 / 16 : 4 / 5;
-    const W = 1080, H = Math.round(W / ratio);
+    // 스토리는 항상 9:16. 피드는 세로로 찍으면 4:5, 가로로 찍으면 4:3 (인스타그램 피드 허용 범위 안).
+    const landscape = sw > sh;
+    const ratio = target() === 'story' ? 9 / 16 : landscape ? 4 / 3 : 4 / 5;
+    const W = landscape && target() !== 'story' ? 1440 : 1080;
+    const H = Math.round(W / ratio);
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');

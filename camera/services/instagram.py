@@ -14,6 +14,9 @@ from django.conf import settings
 log = logging.getLogger("camera")
 
 TIMEOUT = 30
+API_VERSION = "v25.0"
+# 인스타그램이 사진 주소를 읽지 못했을 때 내는 오류 번호 (잠시 뒤 다시 시도하면 되는 경우가 많음)
+RETRY_CODES = {9004, 2207052, 2207003}
 MAX_CAROUSEL = 10
 
 
@@ -39,7 +42,7 @@ def graph_url():
     if settings.IG_GRAPH_URL_SET:
         return settings.IG_GRAPH_URL.rstrip("/")
     host = "graph.instagram.com" if _token().startswith("IG") else "graph.facebook.com"
-    return f"https://{host}/v21.0"
+    return f"https://{host}/{API_VERSION}"
 
 
 def _call(method, path, **params):
@@ -54,8 +57,23 @@ def _call(method, path, **params):
     except (requests.RequestException, ValueError) as exc:
         raise InstagramError(f"인스타그램에 연결하지 못했어요: {exc}") from exc
     if "error" in data:
-        raise InstagramError(data["error"].get("message", str(data["error"])))
+        err = data["error"]
+        log.warning("인스타그램 오류 %s: %s", path, err)
+        exc = InstagramError(err.get("error_user_msg") or err.get("message") or str(err))
+        exc.codes = {err.get("code"), err.get("error_subcode")}
+        raise exc
     return data
+
+
+def _create_container(**params):
+    """컨테이너를 만듭니다. 인스타그램이 사진을 못 읽었다고 하면 잠시 뒤 두 번까지 다시 시도합니다."""
+    for attempt in range(3):
+        try:
+            return _call("POST", f"{settings.IG_USER_ID}/media", **params)["id"]
+        except InstagramError as exc:
+            if attempt == 2 or not (getattr(exc, "codes", set()) & RETRY_CODES):
+                raise
+            time.sleep(4)
 
 
 def _wait_ready(container_id, tries=10):
@@ -90,7 +108,7 @@ def publish_photo(image_url, caption="", story=False):
         params["media_type"] = "STORIES"  # 스토리는 캡션을 받지 않습니다.
     else:
         params["caption"] = caption
-    container = _call("POST", f"{settings.IG_USER_ID}/media", **params)["id"]
+    container = _create_container(**params)
     return _publish(container)
 
 
